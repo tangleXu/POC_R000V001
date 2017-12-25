@@ -1,73 +1,53 @@
-//ICC-AVR application builder : 2017/11/23 0:25:20
+//ICC-AVR application builder : 2017/11/5 14:26:21
 // Target : M8
 // Crystal: 8.0000Mhz
 
-#include "lcd1602.h"
-uint16_t temp=6;
-float temp1=12.352;
+
+#include "oled.h"
+#include "bmp.h" 
 
 void do_LSCELLINFO();
 
-uint8_t gFSM = 0;
-
-uint8_t ericsson[]={"    ERICSSON    "};
-const uint8_t xin[]={0x00,0x1B,0x1F,0x1F,0x1F,0x0E,0x04,0x00};
-
-char g_MCC[10]="-";
-char g_MNC[10]="-";
-char g_EARFCN[10]="-";
-char g_GCELLID[10]="-";
-char g_TAC[10]="-";
-char g_CAT[10]="-";
-char g_SINR[10]="-";
-char g_BAND[10]="-";
-char g_PCI[10]="-"; 
-char g_RSRP[10]="-";
-char g_RSRQ[10]="-";
-char g_RSSI[10]="-";
+char g_MCC[10]="460";
+char g_MNC[10]="012";
+char g_EARFCN[10]="1058";
+char g_GCELLID[10]="1015";
+char g_TAC[10]="256";
+char g_CAT[10]="255";
+char g_SINR[10]="5.1";
+char g_BAND[10]="8";
+char g_PCI[10]="20"; 
+char g_RSRP[10]="-30";
+char g_RSRQ[10]="-50";
+char g_RSSI[10]="-90";
 
 #define USART_REC_LEN 100
 #define NULL 0
 
-uint8_t USART_RX_BUF[USART_REC_LEN]={0};
+u8 USART_RX_BUF[USART_REC_LEN]={0};
 
-uint16_t USART_RX_STA=0;
-uint16_t g_cnt=0;
+u16 USART_RX_STA=0;
+u16 g_cnt=0;
 
-void delay_N(int cnt)
-{
- int i;
- for(i=0;i<cnt;i++)
-  delay_xms(200);
-}
-
-//UART0 initialize
-// desired baud rate: 9600
-// actual: baud rate:9615 (0.2%)
-void uart0_init(void)
-{
- //UCSRB = 0x00; //disable while setting baud rate
- //UCSRA = 0x00;
- //UCSRC = BIT(URSEL) | 0x06;
- //UBRRL = 0x33; //set baud rate lo
- //UBRRH = 0x00; //set baud rate hi
- //UCSRB = 0x98;
-
- //UCSRB = 0x00; //disable while setting baud rate
- //UCSRA = 0x00;
- //UCSRC = BIT(URSEL) | 0x06;
- //UBRRL = 0x33; //set baud rate lo
- //UBRRH = 0x00; //set baud rate hi
- //UCSRB = 0x98;
- 
- //115200
- UCSRB = 0x00; //disable while setting baud rate
- UCSRA = 0x00;
- UCSRC = BIT(URSEL) | 0x06;
- UBRRL = 0x05; //set baud rate lo
- UBRRH = 0x00; //set baud rate hi
- UCSRB = 0x98;
- 
+ char* strstr( char *str1,  char *str2)
+{     
+      while(*str1 != '\0')
+      {
+           char *p = str1;
+           char *q = str2;
+           char *res = NULL;
+          if(*p == *q)
+          {
+                res = p;
+                while(*p && *q && *p++ == *q++)
+                ;
+                
+                if(*q == '\0')
+                      return res;                    
+          }
+          str1++;
+      }
+      return NULL;
 }
 
  char *my_strstr( char *str,  char *sub_str)
@@ -101,8 +81,8 @@ int parseCellInfo(unsigned char *SRC_BUF, unsigned char *ITEM, char *target)
 	if(p != NULL) {
 		for(i=0;i<10;i++) target[i]=0;
 		idx = 0;
-		while(*p!=':'&&*p!='\r'&&*p!='\n') p++; p++;
-		while(*p!=' '&&*p!='\r'&&*p!='\n'){
+		while(*p!=':') p++; p++;
+		while(*p!=' '&&*p!='\r'){
 			target[idx++]=*p++;
 			//printf("%c",*p);
 		}
@@ -111,10 +91,6 @@ int parseCellInfo(unsigned char *SRC_BUF, unsigned char *ITEM, char *target)
 		//printf("%s=%s\n",ITEM,target);
 		return 1;
 	}else
-	{
-	 //target[0]='-';
-	 //target[1]=0;
-	}
 		return 0;
 }
 
@@ -134,6 +110,61 @@ void USART_Transmit_string(unsigned char *ptr)
  //USART_Transmit(0x0A);
 }
 
+void port_init(void)
+{
+ PORTB = 0x00;
+ DDRB  = 0xFF;
+ PORTC = 0x00; //m103 output only
+ DDRC  = 0x00;
+ PORTD = 0x00;
+ DDRD  = 0x00;
+}
+
+//UART0 initialize
+// desired baud rate: 9600
+// actual: baud rate:9615 (0.2%)
+void uart1_init(void)
+{
+ UCSRB = 0x00; //disable while setting baud rate
+ UCSRA = 0x00;
+ UCSRC = BIT(URSEL) | 0x06;
+ UBRRL = 0x33; //set baud rate lo
+ UBRRH = 0x00; //set baud rate hi
+ UCSRB = 0x98;
+}
+
+//UART0 initialize
+// desired baud rate: 115200
+// actual: baud rate:115198 (0.0%)
+void uart0_init(void)
+{
+ UCSRB = 0x00; //disable while setting baud rate
+ UCSRA = 0x00;
+ UCSRC = BIT(URSEL) | 0x06;
+ UBRRL = 0x05; //set baud rate lo
+ UBRRH = 0x00; //set baud rate hi
+ UCSRB = 0x98;
+}
+
+
+u8 find_str(u8 *s, u8 *t)//óDò???·μ???μ￡?0/1
+{
+	u8 *s_temp;
+	u8 *m_temp;
+	u8 *t_temp;
+	
+	if (s == 0 ||t == 0)
+		return 0;
+
+	for (s_temp = s; *s_temp != '\0'; s_temp++)
+	{
+		m_temp = s_temp;
+		for (t_temp = t; *t_temp == *m_temp; t_temp++, m_temp++)//?e???D??ê?·??àí?
+			if (*t_temp == '\0') //ê?·?ê??áê?·?		 
+				return 1;
+	}
+	return 0;
+}
 
 void check_cellinfo()
 {
@@ -155,7 +186,7 @@ void check_cellinfo()
 void uart0_rx_isr(void)
 {
  //u8 res;
- uint8_t i;
+ u8 i;
   UCSRB &= ~(1 << RXCIE); //Disable interrupt.
  while(!(UCSRA&BIT(RXC)));
  //Shift to left
@@ -171,18 +202,32 @@ void uart0_rx_isr(void)
 	}
   UCSRB |=  (1 << RXCIE);         //打开串口中断
 
+ /*
+ while(!(UCSRA&BIT(RXC))); 
+ //uart has received a character in UDR
+ if(USART_RX_STA < USART_REC_LEN)
+ {
+   res = UDR;
+   
+   if(res == '\n')// && USART_RX_BUF[USART_RX_STA-1]=='\r')
+   {
+   	USART_RX_BUF[USART_RX_STA]=res;
+	USART_RX_STA|=1<<15;
+	USART_Transmit_string(USART_RX_BUF);
+	do_LSCELLINFO();
+   }
+	
+	USART_RX_BUF[USART_RX_STA++]=res;
+		
+ }else
+ {
+       //The buffer is full.
+ 	   //USART_RX_STA=0;
+	   
+	   USART_RX_STA|=1<<15;
+ } */
 }
 
-
-void port_init(void)
-{
- PORTB = 0xFF;
- DDRB  = 0x00;
- PORTC = 0x10; //m103 output only
- DDRC  = 0x10;
- PORTD = 0x00;
- DDRD  = 0xFC;
-}
 
 //call this routine to initialize all peripherals
 void init_devices(void)
@@ -190,8 +235,8 @@ void init_devices(void)
  //stop errant interrupts until set up
  CLI(); //disable all interrupts
  port_init();
- init_lcd();
  uart0_init();
+ OLED_Init();			//初始化OLED 
  
  MCUCR = 0x00;
  GICR  = 0x00;
@@ -199,226 +244,138 @@ void init_devices(void)
  SEI(); //re-enable interrupts
  //all peripherals are now initialized
 }
-void check_network_info()
+
+void main()
 {
-    int i;
-	uint8_t key;
-	
-	while(1)
-	{
-	display_one_string("Collect Info ...", 0,0);
-	USART_Transmit_string("AT+LSCELLINFO\r\n"); 
-	
-	for(i=0;i<30;i++)
-	{
-	  dis_progress(i);
-	  delay_N(2);
-	}
-	
-    display_clear();
-	display_one_string("MCC:", 0,0); display_one_string(g_MCC, 4,0);
-	display_one_string("MNC:", 8,0); display_one_string(g_MNC, 12,0);
-	display_one_string("EARFCN:", 0,1); display_one_string(g_EARFCN, 7,1);
-	delay_N(100);
-    display_clear();
-	display_one_string("TAC:", 0,0); display_one_string(g_TAC, 4,0);
-	display_one_string("CAT:", 8,0); display_one_string(g_CAT, 12,0);
-	display_one_string("GCELLID:", 0,1); display_one_string(g_GCELLID, 8,1);
-	delay_N(100);
-    display_clear();
-	display_one_string("SINR:", 0,0); display_one_string(g_SINR, 5,0);
-	display_one_string("BAND:", 0,1); display_one_string(g_BAND, 5,1);
-	delay_N(100);
-    display_clear();
-	display_one_string("PCI:", 0,0); display_one_string(g_PCI, 4,0);
-	display_one_string("RSRP:", 0,1); display_one_string(g_RSRP, 5,1);
-	delay_N(100);
-    display_clear();
-	display_one_string("RSRQ:", 0,0); display_one_string(g_RSRQ, 5,0);
-	display_one_string("RSSI:", 0,1); display_one_string(g_RSSI, 5,1);
-	delay_N(100);
-	//////////////////////
-	  key=PINB;
-	  key=key&0x0F;
-	  
-	  if(key==0x0E)
-	  {
-	  
-	  }else if(key==0x0D)
-	  {
-        
-	  }else if(key==0x0B)
-	  {
-	   display_clear();
-	   display_one_string("Back main menu.", 0,0);
-	   delay_N(100);
-	   break;  
-	  }else if(key==0x07){
- 	
-	   
-	  }else
-	  {
-       
-	  }		
-	}
-}
-
-
-void pwr_a9500()
-{
- 	 PORTC |=(0x1<<4);
-	 PORTC &=~(0x1<<4);
-	 //Delay 1000ms
-	 delay_xms(200);delay_xms(200);delay_xms(200);delay_xms(200);delay_xms(200);delay_xms(200);delay_xms(200);delay_xms(200);delay_xms(200);delay_xms(200);
-	 PORTC |=(0x1<<4);
-	 delay_xms(200);delay_xms(200);delay_xms(200);delay_xms(200);delay_xms(200);delay_xms(200);
-	 PORTC &=~(0x1<<4);
-}
-
-
-//
-void main(void)
-{
- uint8_t key;
- uint8_t k_lock=0;
- init_devices();
- 
- init_CGRAM(); //Custom LCD1602 chars.
- write_byte(1, 0x0);
- 
-	while(1)
-	{
-	  delay_xms(20);
-      
-	  switch(gFSM)
-	  {
-	      case 0: //Index page.
-		      display_one_string(ericsson, 0,0);
-			  display_one_string(" NB-IoT Utility ", 0,1);
-		      break;
-		  case 1: //Init module.
-		      display_one_string("Init A9500.", 0,0);
-		      break;
-		  case 2: //Search mode.
-		      display_one_string("Search service.", 0,0);
-			  dis_progress(temp++%30);
-		      break;
-		  case 3: //NB-IoT Info
-		      display_one_string("NB-IoT Info", 0,0);
-		      break;
-		  case 4: //Attach
-		      display_one_string("Attach CMD", 0,0);
-		      break;
-		  case 5: //Detach
-		      display_one_string("Detach CMD", 0,0);
-		      break;
-		  case 6: //Search Service
-		      display_one_string("   Search ...   ", 0,0);
-		      break;
-	      case 7:
-		      display_one_string("Set to 9600     ", 0,0);
-		      break;
-		  default://Idle
-		      display_one_string("  Idle Status.  ", 0,0);
-		      break;               
-		  
-	  }
-	  key=PINB;
-	  key=key&0x0F;
-	  
-	  if(key==0x0E)
-	  {
-	   gFSM++;
-       delay_xms(200);
-	   display_clear();
-	  }else if(key==0x0D)
-	  {
-	   gFSM--;
-       delay_xms(200);
-	   display_clear();
-	  }else if(key==0x0B)
-	  {
-	   if(gFSM == 3) {
-	     //Display NB-IoT Parameters
-	     check_network_info();
-	   }
-	   if(gFSM == 0) {
-	     //Display NB-IoT Parameters
-		 pwr_a9500();
-	     USART_Transmit_string("AT\r\n");
-	   }
-	   if(gFSM == 1) {
-	     //Display NB-IoT Parameters
-	     USART_Transmit_string("AT+CPIN?\r\n");
-		 delay_xms(50);
-		 USART_Transmit_string("AT+ICCID\r\n");
-		 delay_xms(50);
-		 USART_Transmit_string("AT+CGSN\r\n");
-		 delay_xms(50);
-		 USART_Transmit_string("AT+CEREG=1\r\n");
-		 delay_xms(50);
-		 USART_Transmit_string("AT+CGREG=1\r\n");
-		 delay_xms(50);
-		 USART_Transmit_string("AT+MODODR=5\r\n");
-		 delay_xms(50);
-		 USART_Transmit_string("AT+CGDCONT=1,'IP','internet'\r\n");
-		 delay_xms(50);
-	   }
-	   if(gFSM == 2) {
-	     //Display NB-IoT Parameters
-	     USART_Transmit_string("AT+COPS=1,2,'46012'\r\n");
-	   }
-	   if(gFSM == 6) {
-	     //Display NB-IoT Parameters
-	     USART_Transmit_string("AT+CSQ\r\n");
-	   }
-
-       if(gFSM == 7) {
-	    USART_Transmit_string("AT+IPR=9600\r\n");
-	    CLI();
-	    delay_xms(500);
-		PORTD&=~(0x01<<0);
-		PORTD&=~(0x01<<1);
- UCSRB = 0x00; //disable while setting baud rate
- UCSRA = 0x00;
- UCSRC = BIT(URSEL) | 0x06;
- UBRRL = 0x47; //set baud rate lo
- UBRRH = 0x00; //set baud rate hi
- UCSRB = 0x98;
-		MCUCR = 0x00;
-        GICR  = 0x00;
-        TIMSK = 0x00; //timer interrupt sources
+     unsigned char t,i;
+	 
+     init_devices();
+	 USART_Transmit_string("AT\r\n"); 
+	 delay_ms(500);
+	 USART_Transmit_string("AT+IPR=9600\r\n");
+	 delay_ms(500);
+	 uart1_init();
+	 delay_ms(1000);
+	 PORTC&=~(1<<4);
+	 delay_ms(500);
+	 PORTC|=(1<<4);
+	 
+	 OLED_Clear();	
+	 //OLED_DrawBMP(0,0,128,8,BMP2);
+	 OLED_ShowString(30,4,"ERICSSON");
+	 delay_ms(500);
+	 
+ 	 while(1)
+	 {
+	   USART_Transmit_string("AT+LSCELLINFO\r\n"); 
+	    //for(i=0;i<USART_REC_LEN;i++)
+		//	USART_Transmit(USART_RX_BUF[i]);  
+		t++;
+		if(t>'~')t=' ';
+//		OLED_ShowNum(103,6,t,3,16);//显示ASCII字符的码值 	
+			
+//		delay_ms(100);
+		OLED_Clear();
+		if(t%5==0)
+		OLED_DrawBMP(2,0,20,2,ANTANA_FULL01);
+		else if(t%5==1)
+		OLED_DrawBMP(2,0,20,2,ANTANA_FULL02);
+		else if(t%5==2)
+		OLED_DrawBMP(2,0,20,2,ANTANA_FULL03);
+		else if(t%5==3)
+		OLED_DrawBMP(2,0,20,2,ANTANA_FULL04);
+		else
+		OLED_DrawBMP(2,0,20,2,ANTANA_FULL05);
 		
-		delay_xms(500);
-		SEI();
-	    USART_Transmit_string("AT\r\n");
-	   }
-	  }else if(key==0x07){
-	   if(gFSM == 3) {
-	     //Display NB-IoT Parameters
-	     check_network_info();
-	   }	   	
-	   
-	  }else
-	  {
-       
-	  }
+		OLED_DrawBMP(24,0,30,2,BLUETOOTH_ICON);
+		OLED_DrawBMP(40,0,70,2,NBIOT_ICON);
+		
+		if(t%5==0)
+		OLED_DrawBMP(106,0,106+21,2,BAT_ICON0);
+		else if(t%5==1)
+		OLED_DrawBMP(106,0,106+21,2,BAT_ICON1);
+		else if(t%5==2)
+		OLED_DrawBMP(106,0,106+21,2,BAT_ICON2);
+		else if(t%5==3)
+		OLED_DrawBMP(106,0,106+21,2,BAT_ICON3);
+		else
+		OLED_DrawBMP(106,0,106+21,2,BAT_ICON4);
+		
+		OLED_DrawBMP(85,0,85+16,2,LOGO_5G);
 
-	}
+		OLED_ShowCHinese(18+0,3,0);//中
+		OLED_ShowCHinese(18+18,3,1);//景
+		OLED_ShowCHinese(18+36,3,2);//园
+		OLED_ShowCHinese(18+54,3,3);//电
+		OLED_ShowCHinese(18+72,3,4);//子
+		
+		OLED_ShowString(0,6,"NB-IoT Utility");
+		
+		//do_LSCELLINFO();
+		
+		delay_ms(4000);
+		OLED_Clear();
+		OLED_DrawBMP(2,0,20,2,ANTANA_FULL05);
+		OLED_DrawBMP(40,0,70,2,NBIOT_ICON);
+		OLED_DrawBMP(106,0,106+21,2,BAT_ICON4);
+		OLED_DrawBMP(85,0,85+16,2,LOGO_5G);
+		OLED_DrawBMP(24,0,30,2,BLUETOOTH_ICON);
+		
+		OLED_ShowString(0,2,"MCC:");
+		OLED_ShowString(30,2,g_MCC);
+
+		OLED_ShowString(70,2,"MNC:");
+		OLED_ShowString(100,2,g_MNC);
+
+		OLED_ShowString(0,4,"EARFCN:");
+		OLED_ShowString(60,4,g_EARFCN);
+
+		OLED_ShowString(0,6,"GCELLID:");
+		OLED_ShowString(70,6,g_GCELLID);
+						
+		delay_ms(3500);
+		OLED_Clear();
+		OLED_DrawBMP(2,0,20,2,ANTANA_FULL05);
+		OLED_DrawBMP(40,0,70,2,NBIOT_ICON);
+		OLED_DrawBMP(106,0,106+21,2,BAT_ICON4);
+		OLED_DrawBMP(85,0,85+16,2,LOGO_5G);
+		OLED_DrawBMP(24,0,30,2,BLUETOOTH_ICON);
+		
+		OLED_ShowString(0,2,"TAC:");
+		OLED_ShowString(30,2,g_TAC);
+
+		OLED_ShowString(60,2,"CAT:");
+		OLED_ShowString(100,2,g_CAT);
+
+		OLED_ShowString(0,4,"SINR:");
+		OLED_ShowString(40,4,g_SINR);
+
+		OLED_ShowString(70,4,"BAND:");
+		OLED_ShowString(110,4,g_BAND);
+		
+		OLED_ShowString(0,6,"PCI:");
+		OLED_ShowString(30,6,g_PCI);
+		
+		delay_ms(3500);	
+		OLED_Clear();
+		OLED_DrawBMP(2,0,20,2,ANTANA_FULL05);
+		OLED_DrawBMP(40,0,70,2,NBIOT_ICON);
+		OLED_DrawBMP(106,0,106+21,2,BAT_ICON4);
+		OLED_DrawBMP(85,0,85+16,2,LOGO_5G);
+		OLED_DrawBMP(24,0,30,2,BLUETOOTH_ICON);
+				
+		OLED_ShowString(0,2,"RSRP:");
+		OLED_ShowString(50,2,g_RSRP);		
+
+		OLED_ShowString(0,4,"RSRQ:");
+		OLED_ShowString(50,4,g_RSRQ);
+		
+		OLED_ShowString(0,6,"RSSI:");
+		OLED_ShowString(50,6,g_RSSI);
+				
+		delay_ms(3500);
+		
+		//OLED_DrawBMP(0,0,128,8,BMP2);
+		//delay_ms(1500);
+	 }
 }
-
-/*
-	  delay_xms(200);
-	  delay_xms(200);
-	  delay_xms(200);
-	  delay_xms(200);
-	  delay_xms(200);
-	  //display_clear();
-	  //delay_xms(200);
-	  
-	  write_byte(1, '%');
-	  dis_progress(temp%30);
-	  display_one_int_num(temp++,1,0);
-	  display_one_float_num(temp1,6,0);
-	  temp1+=0.01;
-*/
